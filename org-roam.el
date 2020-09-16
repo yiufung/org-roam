@@ -1065,20 +1065,25 @@ citation key, for Org-ref cite links."
                          :order-by (asc from)])))
 
 (defun org-roam-store-link ()
-  "Store a link to an Org-roam file or heading."
-  (when (and (bound-and-true-p org-roam-mode)
-             (org-roam--org-roam-file-p))
-    (if (org-before-first-heading-p)
-        (when-let ((titles (org-roam--extract-titles)))
-          (org-roam-link-store-props
-           :type        "file"
-           :link        (format "file:%s" (abbreviate-file-name buffer-file-name))
-           :description (car titles)))
-      (let ((id (org-id-get)))
-        (org-id-store-link)
-        ;; If :ID: was created, update the cache
-        (unless id
-          (org-roam-db--update-headlines))))))
+  "Store a link to an Org-roam file or heading.
+When calling `org-store-link' in an Org-roam file within a
+headline, Org-roam will find and create an ID for the headline
+and update the Org-roam cache.
+Fall back to Org's `org-store-link' otherwise."
+  (cond ((and (bound-and-true-p org-roam-mode)
+              (org-roam--org-roam-file-p))
+         (if (org-before-first-heading-p)
+             (when-let ((titles (org-roam--extract-titles)))
+               (org-roam-link-store-props
+                :type        "file"
+                :link        (format "file:%s" (abbreviate-file-name buffer-file-name))
+                :description (car titles)))
+           (let ((id (org-id-get)))
+             (org-id-store-link)
+             ;; If :ID: was created, update the cache
+             (unless id (org-roam-db--update-headlines)))))
+        (_ ;; Default to Org's behaviour
+         (org-store-link))))
 
 (defun org-roam-id-find (id &optional markerp strict)
   "Return the location of the entry with the id ID.
