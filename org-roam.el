@@ -1266,7 +1266,8 @@ during the next idle slot."
 (defun org-roam--process-update-queue ()
   "Process files queued in `org-roam--file-update-queue'."
   (when org-roam--file-update-queue
-    (mapc #'org-roam-db--update-file org-roam--file-update-queue)
+    (mapc #'org-roam-db--clear-file org-roam--file-update-queue)
+    (mapc #'org-roam-db--insert-file org-roam--file-update-queue)
     (org-roam-message "database updated during idle: %s."
                       (mapconcat #'file-name-nondirectory org-roam--file-update-queue  ", ") )
     (setq org-roam--file-update-queue nil)))
@@ -1437,7 +1438,7 @@ When NEW-FILE-OR-DIR is a directory, we use it to compute the new file path."
                                          (find-file-noselect file))
                   (org-roam--replace-link old-path new-path)
                   (save-buffer)
-                  (org-roam-db--update-file)))
+                  (org-roam--queue-file-for-update)))
               files-affected)
         ;; If the new path is in a different directory, relative links
         ;; will break. Fix all file-relative links:
@@ -1447,7 +1448,7 @@ When NEW-FILE-OR-DIR is a directory, we use it to compute the new file path."
             (org-roam--fix-relative-links old-path)
             (save-buffer)))
         (when (org-roam--org-roam-file-p new-file)
-          (org-roam-db--update-file new-path))))))
+          (org-roam--queue-file-for-update new-path))))))
 
 (defun org-roam--id-new-advice (&rest _args)
   "Update the database if a new Org ID is created."

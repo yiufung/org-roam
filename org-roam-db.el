@@ -441,6 +441,25 @@ connections, nil is returned."
      (secure-hash 'sha1 (current-buffer)))))
 
 ;;;;; Updating
+(defun org-roam-db--insert-file (&optional file-path)
+  "Insert data for FILE-PATH into Org-roam cache.
+Assumes that the Org-roam cache is cleared of old data from FILE-PATH."
+  (setq file-path (or file-path
+                      (buffer-file-name (buffer-base-buffer))))
+  (when (file-exists-p file-path)
+    (when-let ((buf (find-buffer-visiting file-path)))
+      (with-current-buffer buf
+        (save-buffer)))
+    (org-roam--with-temp-buffer file-path
+      (emacsql-with-transaction (org-roam-db)
+        (org-roam-db--insert-meta)
+        (org-roam-db--insert-tags)
+        (org-roam-db--insert-titles)
+        (org-roam-db--insert-ref)
+        (when org-roam-enable-headline-linking
+          (org-roam-db--insert-ids))
+        (org-roam-db--insert-links)))))
+
 (defun org-roam-db--update-file (&optional file-path)
   "Update Org-roam cache for FILE-PATH.
 If the file does not exist anymore, remove it from the cache.
