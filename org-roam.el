@@ -598,7 +598,7 @@ it as FILE-PATH."
                                    :point begin))
                  (names (pcase type
                           ("id"
-                           (list (car (org-roam-id-find path nil nil 'keep-buffer))))
+                           (list (car (org-roam-id-find path))))
                           ("cite" (list path))
                           ("website" (list path))
                           ("fuzzy" (list path))
@@ -1064,7 +1064,8 @@ Otherwise, return a cons formatted as \(file . pos).
 When STRICT is non-nil, only consider Org-roam’s database.
 When KEEP-BUFFER-P is non-nil, keep the buffers navigated by Org-roam open."
   (let ((file (or (org-roam-id-get-file id)
-                  (unless strict (org-id-find-id-file id)))))
+                  (unless strict (org-id-find-id-file id))
+                  org-roam-file-name)))
     (when file
       (let ((existing-buf (find-buffer-visiting file))
             (res (org-id-find-id-in-file id file markerp)))
