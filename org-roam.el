@@ -1719,6 +1719,19 @@ Return added alias."
         (org-roam-db--update-file (buffer-file-name (buffer-base-buffer))))
     (user-error "No aliases to delete")))
 
+(defun org-roam-tag-add-action (tag)
+  "Add tag to file"
+  (let* ((tag (if (eq org-roam-completion-system 'ivy)
+                  (car tag) tag))
+         (file (buffer-file-name (buffer-base-buffer)))
+         (existing-tags (org-roam--extract-tags-prop file)))
+    (org-roam--set-global-prop
+     "roam_tags"
+     (combine-and-quote-strings (seq-uniq (cons tag existing-tags))))
+    (org-roam-db--insert-tags 'update)
+    tag)
+  )
+
 (defun org-roam-tag-add ()
   "Add a tag to Org-roam file.
 
@@ -1726,15 +1739,12 @@ Return added tag."
   (interactive)
   (unless org-roam-mode (org-roam-mode))
   (let* ((all-tags (org-roam-db--get-tags))
-         (tag (completing-read "Tag: " all-tags))
-         (file (buffer-file-name (buffer-base-buffer)))
-         (existing-tags (org-roam--extract-tags-prop file)))
+         (tag (org-roam-completion--completing-read
+               ;; Construct as alist to conform to convention when handling file/buffer/ref
+               "Tag: " (mapcar #'(lambda (x) (cons x nil)) all-tags)
+               :action #'org-roam-tag-add-action)))
     (when (string-empty-p tag)
       (user-error "Tag can't be empty"))
-    (org-roam--set-global-prop
-     "roam_tags"
-     (combine-and-quote-strings (seq-uniq (cons tag existing-tags))))
-    (org-roam-db--insert-tags 'update)
     tag))
 
 (defun org-roam-tag-delete ()
