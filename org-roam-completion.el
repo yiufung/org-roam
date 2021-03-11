@@ -74,34 +74,29 @@ Return user choice."
    ((eq org-roam-completion-system 'default)
     (completing-read prompt choices nil require-match initial-input))
    ((eq org-roam-completion-system 'ivy)
-    (if (fboundp 'ivy-read)
-        (ivy-read prompt choices
-                  :initial-input initial-input
-                  :preselect initial-input
-                  :require-match require-match
-                  :action  action
-                  :caller 'org-roam--completing-read)
+    (unless (fboundp 'ivy-read)
       (user-error "Please install ivy from \
-https://github.com/abo-abo/swiper")))
+https://github.com/abo-abo/swiper"))
+    (ivy-read prompt choices
+              :initial-input initial-input
+              :preselect initial-input
+              :require-match require-match
+              :action action
+              :caller 'org-roam--completing-read))
    ((eq org-roam-completion-system 'helm)
     (unless (and (fboundp 'helm)
                  (fboundp 'helm-make-source))
       (user-error "Please install helm from \
 https://github.com/emacs-helm/helm"))
-    (let ((source (helm-make-source prompt 'helm-source-sync
-                    :candidates (mapcar #'car choices)
-                    :filtered-candidate-transformer
-                    (and (not require-match)
-                         #'org-roam-completion--helm-candidate-transformer)))
-          (buf (concat "*org-roam "
-                       (s-downcase (s-chop-suffix ":" (s-trim prompt)))
-                       "*")))
-      (or (helm :sources source
-                :action '("open" . (lambda (candidate) (mapc 'action (helm-marked-candidates))))
-                :prompt prompt
-                :input initial-input
-                :buffer buf)
-          (keyboard-quit)))))
+    ;; helm always returns a list, while other completion engines return a single item
+    ;; We define
+    (helm
+     :sources `(,(helm-build-sync-source prompt
+                   :candidates (mapcar #'car choices)
+                   :filtered-candidate-transformer (and (not require-match) #'org-roam-completion--helm-candidate-transformer)
+                   :action (lambda (candidate) (mapc action (helm-marked-candidates)))))
+     :input initial-input
+     :buffer (concat "*org-roam " (s-downcase (s-chop-suffix ":" (s-trim prompt))) "*"))))
   )
 
 (provide 'org-roam-completion)

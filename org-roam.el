@@ -1527,6 +1527,14 @@ M-x info for more information at Org-roam > Installation > Post-Installation Tas
     (insert (format "- Org: %s\n" (org-version nil 'full)))
     (insert (format "- Org-roam: %s" (org-roam-version)))))
 
+(defun org-roam--find-file-action (completion)
+  "open a file with org-roam given a completion selected"
+  (let* ((res (cdr (assoc completion (org-roam--get-title-path-completions))))
+         (file-path (plist-get res :path)))
+    (if file-path
+        (org-roam--find-file file-path)
+      completion)))
+
 ;;;###autoload
 (defun org-roam-find-file (&optional initial-prompt completions filter-fn no-confirm)
   "Find and open an Org-roam file.
@@ -1544,11 +1552,9 @@ If NO-CONFIRM, assume that the user does not want to modify the initial prompt."
          (title-with-tags (if no-confirm
                               initial-prompt
                             (org-roam-completion--completing-read "File: " completions
-                                                                  :initial-input initial-prompt)))
-         (res (cdr (assoc title-with-tags completions)))
-         (file-path (plist-get res :path)))
-    (if file-path
-        (org-roam--find-file file-path)
+                                                                  :initial-input initial-prompt
+                                                                  :action #'org-roam--find-file-action))))
+    (unless title-with-tags
       (let ((org-roam-capture--info `((title . ,title-with-tags)
                                       (slug  . ,(funcall org-roam-title-to-slug-function title-with-tags))))
             (org-roam-capture--context 'title))
@@ -1732,19 +1738,17 @@ Return added alias."
      (combine-and-quote-strings (seq-uniq (cons tag existing-tags))))
     (org-roam-db--insert-tags 'update)))
 
-(defun org-roam-tag-add-actions (tags)
-  "Add multiple tags to file"
-  (mapc 'org-roam-tag-add-action tags))
-
 (defun org-roam-tag-add ()
   "Add tags to Org-roam file."
   (interactive)
   (unless org-roam-mode (org-roam-mode))
-  (let* ((all-tags (org-roam-db--get-tags)))
-    (org-roam-completion--completing-read "Tag: "
-                                          ;; Construct as alist to conform to convention when handling file/buffer/ref
-                                          (mapcar #'(lambda (x) (cons x nil)) all-tags)
-                                          :action #'org-roam-tag-add-action)))
+  (let ((all-tags (org-roam-db--get-tags)))
+    (cl-dolist (tag (org-roam-completion--completing-read "Tag: "
+                                                          ;; Construct as alist to conform to convention when handling file/buffer/ref
+                                                          (mapcar #'(lambda (x) (cons x nil)) all-tags)
+                                                          :action
+                                                          #'org-roam-tag-add-action))
+      (org-roam-tag-add-action tag))))
 
 (defun org-roam-tag-delete ()
   "Delete a tag from Org-roam file."
