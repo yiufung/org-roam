@@ -67,50 +67,42 @@ SOURCE is not used."
   "Present a PROMPT with CHOICES and optional INITIAL-INPUT.
 If REQUIRE-MATCH is t, the user must select one of the CHOICES.
 Return user choice."
-  (let (res)
-    (setq res
-          (cond
-           ((eq org-roam-completion-system 'ido)
-            (let ((candidates (mapcar #'car choices)))
-              (ido-completing-read prompt candidates nil require-match initial-input)))
-           ((eq org-roam-completion-system 'default)
-            (completing-read prompt choices nil require-match initial-input))
-           ((eq org-roam-completion-system 'ivy)
-            (if (fboundp 'ivy-read)
-                (ivy-read prompt choices
-                          :initial-input initial-input
-                          :preselect initial-input
-                          :require-match require-match
-                          :action (prog1 action
-                                    (setq action nil))
-                          :caller 'org-roam--completing-read)
-              (user-error "Please install ivy from \
+  (cond
+   ((eq org-roam-completion-system 'ido)
+    (let ((candidates (mapcar #'car choices)))
+      (ido-completing-read prompt candidates nil require-match initial-input)))
+   ((eq org-roam-completion-system 'default)
+    (completing-read prompt choices nil require-match initial-input))
+   ((eq org-roam-completion-system 'ivy)
+    (if (fboundp 'ivy-read)
+        (ivy-read prompt choices
+                  :initial-input initial-input
+                  :preselect initial-input
+                  :require-match require-match
+                  :action  action
+                  :caller 'org-roam--completing-read)
+      (user-error "Please install ivy from \
 https://github.com/abo-abo/swiper")))
-           ((eq org-roam-completion-system 'helm)
-            (unless (and (fboundp 'helm)
-                         (fboundp 'helm-make-source))
-              (user-error "Please install helm from \
+   ((eq org-roam-completion-system 'helm)
+    (unless (and (fboundp 'helm)
+                 (fboundp 'helm-make-source))
+      (user-error "Please install helm from \
 https://github.com/emacs-helm/helm"))
-            (let ((source (helm-make-source prompt 'helm-source-sync
-                            :candidates (mapcar #'car choices)
-                            :filtered-candidate-transformer
-                            (and (not require-match)
-                                 #'org-roam-completion--helm-candidate-transformer)))
-                  (buf (concat "*org-roam "
-                               (s-downcase (s-chop-suffix ":" (s-trim prompt)))
-                               "*")))
-              (or (helm :sources source
-                        :action (if action
-                                    (prog1 action
-                                      (setq action nil))
-                                  #'identity)
-                        :prompt prompt
-                        :input initial-input
-                        :buffer buf)
-                  (keyboard-quit))))))
-    (if action
-        (funcall action res)
-      res)))
+    (let ((source (helm-make-source prompt 'helm-source-sync
+                    :candidates (mapcar #'car choices)
+                    :filtered-candidate-transformer
+                    (and (not require-match)
+                         #'org-roam-completion--helm-candidate-transformer)))
+          (buf (concat "*org-roam "
+                       (s-downcase (s-chop-suffix ":" (s-trim prompt)))
+                       "*")))
+      (or (helm :sources source
+                :action '("open" . (lambda (candidate) (mapc 'action (helm-marked-candidates))))
+                :prompt prompt
+                :input initial-input
+                :buffer buf)
+          (keyboard-quit)))))
+  )
 
 (provide 'org-roam-completion)
 

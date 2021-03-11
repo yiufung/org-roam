@@ -1725,27 +1725,26 @@ Return added alias."
                   (car tag) tag))
          (file (buffer-file-name (buffer-base-buffer)))
          (existing-tags (org-roam--extract-tags-prop file)))
+    (when (string-empty-p tag)
+      (user-error "Tag can't be empty"))
     (org-roam--set-global-prop
      "roam_tags"
      (combine-and-quote-strings (seq-uniq (cons tag existing-tags))))
-    (org-roam-db--insert-tags 'update)
-    tag)
-  )
+    (org-roam-db--insert-tags 'update)))
+
+(defun org-roam-tag-add-actions (tags)
+  "Add multiple tags to file"
+  (mapc 'org-roam-tag-add-action tags))
 
 (defun org-roam-tag-add ()
-  "Add a tag to Org-roam file.
-
-Return added tag."
+  "Add tags to Org-roam file."
   (interactive)
   (unless org-roam-mode (org-roam-mode))
-  (let* ((all-tags (org-roam-db--get-tags))
-         (tag (org-roam-completion--completing-read
-               ;; Construct as alist to conform to convention when handling file/buffer/ref
-               "Tag: " (mapcar #'(lambda (x) (cons x nil)) all-tags)
-               :action #'org-roam-tag-add-action)))
-    (when (string-empty-p tag)
-      (user-error "Tag can't be empty"))
-    tag))
+  (let* ((all-tags (org-roam-db--get-tags)))
+    (org-roam-completion--completing-read "Tag: "
+                                          ;; Construct as alist to conform to convention when handling file/buffer/ref
+                                          (mapcar #'(lambda (x) (cons x nil)) all-tags)
+                                          :action #'org-roam-tag-add-action)))
 
 (defun org-roam-tag-delete ()
   "Delete a tag from Org-roam file."
